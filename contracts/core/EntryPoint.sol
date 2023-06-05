@@ -485,7 +485,7 @@ contract EntryPoint is IEntryPoint, StakeManager, NonceManager, ReentrancyGuard 
             address paymaster = address(bytes20(paymasterAndData[0:20]));
             if (paymaster.code.length == 0) {
                 // it would revert anyway. but give a meaningful message
-                revert("AA30 paymaster not deployed");
+                revert("[paymaster] paymaster not deployed");
             }
         }
         // always revert
@@ -567,7 +567,7 @@ contract EntryPoint is IEntryPoint, StakeManager, NonceManager, ReentrancyGuard 
             DepositInfo storage paymasterInfo = deposits[paymaster];
             uint256 deposit = paymasterInfo.deposit;
             if (deposit < requiredPreFund) {
-                revert FailedOp(opIndex, "AA31 paymaster deposit too low");
+                revert FailedOp(opIndex, "[paymaster] paymaster deposit too low");
             }
             paymasterInfo.deposit = uint112(deposit - requiredPreFund);
             try
@@ -580,9 +580,9 @@ contract EntryPoint is IEntryPoint, StakeManager, NonceManager, ReentrancyGuard 
                 context = _context;
                 validationData = _validationData;
             } catch Error(string memory revertReason) {
-                revert FailedOp(opIndex, string.concat("AA33 reverted: ", revertReason));
+                revert FailedOp(opIndex, string.concat("[paymaster] reverted: ", revertReason));
             } catch {
-                revert FailedOp(opIndex, "AA33 reverted (or OOG)");
+                revert FailedOp(opIndex, "[paymaster] reverted (or OOG)");
             }
         }
     }
@@ -608,10 +608,10 @@ contract EntryPoint is IEntryPoint, StakeManager, NonceManager, ReentrancyGuard 
         address pmAggregator;
         (pmAggregator, outOfTimeRange) = _getValidationData(paymasterValidationData);
         if (pmAggregator != address(0)) {
-            revert FailedOp(opIndex, "AA34 signature error");
+            revert FailedOp(opIndex, "[paymaster] signature error");
         }
         if (outOfTimeRange) {
-            revert FailedOp(opIndex, "AA32 paymaster expired or not due");
+            revert FailedOp(opIndex, "[paymaster] paymaster expired or not due");
         }
     }
 
