@@ -108,11 +108,11 @@ async function addDepositFor(token: string, account: string, amount: number) {
     /* Hasn't done yet */ 
     try {
         const TokenAddress = token
-        const simpleAccountFactory = SimpleAccountFactory__factory.connect(TokenAddress, signer);
-        const tokenAddress = "0x779877A7B0D9E8603169DdbD7836e478b4624789"
-        const address = "0xD10893cA2A290f02b05810beAE5027EBB43EaE94"; 
-        const tx = await paymaster.addDepositFor(tokenAddress, address, 1);
-
+        const tokenABI = ["function approve(address spender, uint256 amount) public returns (bool)"];
+        const tokenContract = new ethers.Contract(TokenAddress, tokenABI, signer);
+        const approveTx = await tokenContract.approve(paymaster.address, amount);
+        await approveTx.wait();
+        const tx = await paymaster.addDepositFor(TokenAddress, account, 1);
         await tx.wait();
 
         console.log("success");
@@ -126,3 +126,4 @@ async function addDepositFor(token: string, account: string, amount: number) {
 // depositTo('0.01', paymaterAddress)
 // addToken('0x1C02053E9565DF6178eCaAD166D4cB9F8431107b', '0xEc6E432Cd61DAD1BAd43D32dE10e78Ac3785c790')
 // createAA(signer.address, 0)
+addDepositFor('0x1C02053E9565DF6178eCaAD166D4cB9F8431107b', '0xD10893cA2A290f02b05810beAE5027EBB43EaE94', 1)
