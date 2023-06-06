@@ -54,6 +54,11 @@ verify entrypoint
 ```shell
 npx hardhat verify --network sepolia <deploy address> <senderFactory address>
 ```
+verify paymaster factory
+
+```shell
+npx hardhat verify --network sepolia <deploy address> <entrypoint>
+```
 
 ## Deployment
 
