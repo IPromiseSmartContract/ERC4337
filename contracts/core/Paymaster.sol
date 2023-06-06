@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+//import "@openzeppelin/contracts/access/Ownable.sol";
 
 import { IPaymaster } from "../interfaces/IPaymaster.sol";
 import { IEntryPoint } from "../interfaces/IEntryPoint.sol";
@@ -13,11 +13,17 @@ import { UserOperation } from "../libraries/UserOperation.sol";
  * provides helper methods for staking.
  * validates that the postOp is called only by the entryPoint
  */
-abstract contract Paymaster is IPaymaster, Ownable {
+abstract contract Paymaster is IPaymaster {
     IEntryPoint public immutable entryPoint;
+    address paymasterOwner;
+    modifier ownerOrNot() {
+        require(msg.sender == paymasterOwner, "Only owner can do this !");
+        _;
+    }
 
-    constructor(IEntryPoint _entryPoint) {
+    constructor(IEntryPoint _entryPoint, address _owner) {
         entryPoint = _entryPoint;
+        paymasterOwner = _owner;
     }
 
     /// @inheritdoc IPaymaster
@@ -80,7 +86,7 @@ abstract contract Paymaster is IPaymaster, Ownable {
      * @param withdrawAddress target to send to
      * @param amount to withdraw
      */
-    function withdrawTo(address payable withdrawAddress, uint256 amount) public onlyOwner {
+    function withdrawTo(address payable withdrawAddress, uint256 amount) public ownerOrNot {
         entryPoint.withdrawTo(withdrawAddress, amount);
     }
 
@@ -89,7 +95,7 @@ abstract contract Paymaster is IPaymaster, Ownable {
      * This method can also carry eth value to add to the current stake.
      * @param unstakeDelaySec - the unstake delay for this paymaster. Can only be increased.
      */
-    function addStake(uint32 unstakeDelaySec) external payable onlyOwner {
+    function addStake(uint32 unstakeDelaySec) external payable ownerOrNot {
         entryPoint.addStake{ value: msg.value }(unstakeDelaySec);
     }
 
@@ -104,7 +110,7 @@ abstract contract Paymaster is IPaymaster, Ownable {
      * unlock the stake, in order to withdraw it.
      * The paymaster can't serve requests once unlocked, until it calls addStake again
      */
-    function unlockStake() external onlyOwner {
+    function unlockStake() external ownerOrNot {
         entryPoint.unlockStake();
     }
 
@@ -113,7 +119,7 @@ abstract contract Paymaster is IPaymaster, Ownable {
      * stake must be unlocked first (and then wait for the unstakeDelay to be over)
      * @param withdrawAddress the address to send withdrawn value.
      */
-    function withdrawStake(address payable withdrawAddress) external onlyOwner {
+    function withdrawStake(address payable withdrawAddress) external ownerOrNot {
         entryPoint.withdrawStake(withdrawAddress);
     }
 

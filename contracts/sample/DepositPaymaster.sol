@@ -28,22 +28,15 @@ contract DepositPaymaster is Paymaster {
     using SafeERC20 for IERC20;
 
     //calculated cost of the postOp
-    address paymasterOwner;
     uint256 public constant COST_OF_POST = 35000;
     IOracle private constant NULL_ORACLE = IOracle(address(0));
     mapping(IERC20 => IOracle) public oracles;
     mapping(IERC20 => mapping(address => uint256)) public balances;
     mapping(address => uint256) public unlockBlock;
 
-    modifier ownerOrNot() {
-        require(msg.sender == paymasterOwner, "Only owner can do this !");
-        _;
-    }
-
-    constructor(IEntryPoint _entryPoint, address _owner) Paymaster(_entryPoint) {
+    constructor(IEntryPoint _entryPoint, address _owner) Paymaster(_entryPoint, _owner) {
         //owner account is unblocked, to allow withdraw of paid tokens;
         unlockTokenDeposit();
-        paymasterOwner = _owner;
     }
 
     function getOwner() public view returns (address) {
@@ -198,6 +191,6 @@ contract DepositPaymaster is Paymaster {
             //in case above transferFrom failed, pay with deposit:
             balances[token][account] -= actualTokenCost;
         }
-        balances[token][owner()] += actualTokenCost;
+        balances[token][paymasterOwner] += actualTokenCost;
     }
 }
