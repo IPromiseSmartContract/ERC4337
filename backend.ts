@@ -2,10 +2,7 @@ import { ethers } from "ethers";
 import { EntryPoint__factory, DepositPaymaster__factory, SimpleAccountFactory__factory, PaymasterFactory__factory } from "./typechain-types";
 import { config as envConfig } from "dotenv";
 envConfig();
-/*
- * cd /backend and add .env file in this directory.
- * Let user input command and execute function.
- */
+
 const { SEPOLIA_URL, SEPOLIA_PRIVATE_KEYS } = process.env;
 const provider = new ethers.providers.JsonRpcProvider(SEPOLIA_URL);
 const signer = new ethers.Wallet(SEPOLIA_PRIVATE_KEYS!, provider);
