@@ -112,9 +112,10 @@ async function addDepositFor(token: string, account: string, amount: number) {
         const tokenContract = new ethers.Contract(TokenAddress, tokenABI, signer);
         const approveTx = await tokenContract.approve(paymaster.address, amount);
         await approveTx.wait();
-        const tx = await paymaster.addDepositFor(TokenAddress, account, 1);
+        const tx = await paymaster.addDepositFor(TokenAddress, account, amount);
         await tx.wait();
-
+        const result = await paymaster.depositInfo(TokenAddress, account);
+        console.log(result);
         console.log("success");
     } catch (error) {
         console.error("error:", error);
@@ -126,4 +127,4 @@ async function addDepositFor(token: string, account: string, amount: number) {
 // depositTo('0.01', paymaterAddress)
 // addToken('0x1C02053E9565DF6178eCaAD166D4cB9F8431107b', '0xEc6E432Cd61DAD1BAd43D32dE10e78Ac3785c790')
 // createAA(signer.address, 0)
-addDepositFor('0x1C02053E9565DF6178eCaAD166D4cB9F8431107b', '0xD10893cA2A290f02b05810beAE5027EBB43EaE94', 1)
+// addDepositFor('0x1C02053E9565DF6178eCaAD166D4cB9F8431107b', '0xD10893cA2A290f02b05810beAE5027EBB43EaE94', 1)
