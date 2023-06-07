@@ -1,15 +1,26 @@
 {
-    "overrides": [
-        {
-            "files": "*.sol",
-            "options": {
-                "printWidth": 96,
-                "tabWidth": 4,
-                "useTabs": false,
-                "singleQuote": false,
-                "bracketSpacing": true,
-                "explicitTypes": "always"
-            }
-        }
-    ]
+  "overrides": [
+    {
+      "files": ["*.sol"],
+      "options": {
+        "printWidth": 96,
+        "tabWidth": 4,
+        "useTabs": false,
+        "singleQuote": false,
+        "bracketSpacing": true,
+        "explicitTypes": "always"
+      }
+    },
+    {
+      "files": ["*.ts"],
+      "options": {
+        "printWidth": 108,
+        "tabWidth": 4,
+        "useTabs": false,
+        "singleQuote": false,
+        "bracketSpacing": true,
+        "explicitTypes": "always"
+      }
+    }
+  ]
 }
