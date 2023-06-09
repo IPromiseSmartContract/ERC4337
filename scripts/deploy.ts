@@ -1,6 +1,7 @@
 import { ethers } from "hardhat";
 import * as fs from "fs";
 import * as path from "path";
+import type { Deployment } from "./types";
 
 function saveJSON(obj: object) {
     const currentDate = new Date();
@@ -53,13 +54,27 @@ async function main() {
     console.log("PaymasterFactory deployed to:", paymasterFactory.address);
     console.log("=====================================");
 
-    saveJSON({
+    const deployments: Deployment = {
         deployer: signer.address,
-        senderFactory: senderFactory.address,
-        entryPoint: entryPoint.address,
-        simpleAccountFactory: simpleAccountFactory.address,
-        paymasterFactory: paymasterFactory.address,
-    });
+        senderFactory: {
+            address: senderFactory.address,
+            constructor: [],
+        },
+        entryPoint: {
+            address: entryPoint.address,
+            constructor: [senderFactory.address],
+        },
+        simpleAccountFactory: {
+            address: simpleAccountFactory.address,
+            constructor: [entryPoint.address],
+        },
+        paymasterFactory: {
+            address: paymasterFactory.address,
+            constructor: [],
+        },
+    };
+
+    saveJSON(deployments);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
