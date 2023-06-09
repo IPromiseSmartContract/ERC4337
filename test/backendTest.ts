@@ -102,21 +102,21 @@ describe("Backend Test:", async () => {
         });
     });
 
-    //   describe("createAA", () => {
-    //     it("should create a new simple account and verify the account address", async () => {
-    //       const ownerAddress = signer.address;
-    //       const salt = 0;
-    //       const tx = await simpleAccountFactory.createAccount(ownerAddress, salt);
-    //       await tx.wait();
-    //       const simpleAccountAddress = await simpleAccountFactory.getAddress(
-    //         ownerAddress,
-    //         salt
-    //       );
+    describe("createAA", () => {
+        it("should create a new simple account and verify the account address", async () => {
+            const simpleAccountFactory__Factory = await ethers.getContractFactory("SimpleAccountFactory");
+            const simpleAccountFactory = await simpleAccountFactory__Factory.deploy(entryPoint.address);
+            await simpleAccountFactory.deployed();
 
-    //       // Check if the simpleAccountAddress is not undefined
-    //       expect(simpleAccountAddress).to.not.be.undefined;
-    //     });
-    //   });
+            const salt = 0;
+            await simpleAccountFactory.createAccount(deployer.address, salt);
+
+            // Check if the account address is equal to the expected address
+            const accountAddr = await simpleAccountFactory.getAddress(deployer.address, salt);
+
+            expect(accountAddr).not.to.be.undefined;
+        });
+    });
 
     describe("addDepositFor", () => {
         it("should add a token deposit for the Paymaster and update the deposit amount", async () => {
