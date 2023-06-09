@@ -10,24 +10,20 @@ describe("Backend Test:", () => {
     let provider: JsonRpcProvider
     let signer: Wallet
     let entryPoint: EntryPoint
-    let enrtryPointAddress: string
-    let paymaterFactoryAddress: string
+    let enrtryPointAddress = "0x9FA609A4430218a20aF170e246c1E35fbaCc3485"
+    let paymaterFactoryAddress = "0x5D0870C57B807278f54F624f1196014C6D1E0933"
     let paymasterFactory: PaymasterFactory
-    let paymaterAddress: string
+    let paymaterAddress = "0x868CD7d2Baf6B468C3A179DdcD50255c332FEaFd" // If you don't have paymaster address, you can call createPaymaster() first(it will give you the Paymaster address)
     let paymaster: DepositPaymaster
-    let SimpleAccountFactoryAddress: string
+    let SimpleAccountFactoryAddress = "0xE334Ac1DD0e0f89c2B1e45a9a4cA42EC00b57067"
     let simpleAccountFactory: SimpleAccountFactory
 
     before(async () => {
         provider = new ethers.providers.JsonRpcProvider(SEPOLIA_URL);
         signer = new ethers.Wallet(SEPOLIA_PRIVATE_KEYS!, provider);
-        enrtryPointAddress = "0x9FA609A4430218a20aF170e246c1E35fbaCc3485";
         entryPoint = EntryPoint__factory.connect(enrtryPointAddress, signer);
-        paymaterFactoryAddress = "0x5D0870C57B807278f54F624f1196014C6D1E0933"
         paymasterFactory = PaymasterFactory__factory.connect(paymaterFactoryAddress, signer);
-        paymaterAddress = "0x868CD7d2Baf6B468C3A179DdcD50255c332FEaFd"
         paymaster = DepositPaymaster__factory.connect(paymaterAddress, signer); // make sure you channge to your paymaster address
-        SimpleAccountFactoryAddress = "0xE334Ac1DD0e0f89c2B1e45a9a4cA42EC00b57067"
         simpleAccountFactory = SimpleAccountFactory__factory.connect(SimpleAccountFactoryAddress, signer);
     });
     describe("createPaymaster", () => {
@@ -35,6 +31,7 @@ describe("Backend Test:", () => {
             const countBefore = await paymasterFactory.count();
             const tx = await paymasterFactory.createPaymaster(enrtryPointAddress);
             await tx.wait();
+            console.log("Paymaster address: ",await paymasterFactory.getPaymasterAddress(countBefore.toNumber()))
             const countAfter = await paymasterFactory.count();
 
             // After creating a new paymaster, paymasterFactory's count should increase by 1
