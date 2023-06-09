@@ -23,6 +23,7 @@
   },
   "scripts": {
     "compile": "npx hardhat compile",
+    "test": "npx hardhat test",
     "deploy": "yarn compile && npx hardhat run --network sepolia scripts/deploy.ts"
   },
   "version": "0.0.1",
