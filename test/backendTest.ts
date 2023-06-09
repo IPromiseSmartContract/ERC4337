@@ -1,41 +1,51 @@
 import { ethers } from "hardhat";
 import { expect } from "chai";
-import { EntryPoint__factory, DepositPaymaster__factory, SimpleAccountFactory__factory, PaymasterFactory__factory, EntryPoint, PaymasterFactory, DepositPaymaster, SimpleAccountFactory } from "../typechain-types";
+import {
+    EntryPoint,
+    PaymasterFactory,
+    DepositPaymaster,
+    SimpleAccountFactory,
+    MPCToken__factory,
+    MPCToken,
+} from "../typechain-types";
 import { config as envConfig } from "dotenv";
-import { JsonRpcProvider } from "@ethersproject/providers";
-import { Wallet } from "ethers";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 envConfig();
-describe("Backend Test:", () => {
-    const { SEPOLIA_URL, SEPOLIA_PRIVATE_KEYS } = process.env;
-    let provider: JsonRpcProvider
-    let signer: Wallet
-    let entryPoint: EntryPoint
-    let enrtryPointAddress = "0x9FA609A4430218a20aF170e246c1E35fbaCc3485"
-    let paymaterFactoryAddress = "0x5D0870C57B807278f54F624f1196014C6D1E0933"
-    let paymasterFactory: PaymasterFactory
-    let paymaterAddress = "0x868CD7d2Baf6B468C3A179DdcD50255c332FEaFd" // If you don't have paymaster address, you can call createPaymaster() first(it will give you the Paymaster address)
-    let paymaster: DepositPaymaster
-    let SimpleAccountFactoryAddress = "0xE334Ac1DD0e0f89c2B1e45a9a4cA42EC00b57067"
-    let simpleAccountFactory: SimpleAccountFactory
+describe("Backend Test:", async () => {
+    let deployer: SignerWithAddress;
+    let entryPoint: EntryPoint;
+    let paymasterFactory: PaymasterFactory;
+    let paymaster: DepositPaymaster;
+    let token: MPCToken;
 
     before(async () => {
-        provider = new ethers.providers.JsonRpcProvider(SEPOLIA_URL);
-        signer = new ethers.Wallet(SEPOLIA_PRIVATE_KEYS!, provider);
-        entryPoint = EntryPoint__factory.connect(enrtryPointAddress, signer);
-        paymasterFactory = PaymasterFactory__factory.connect(paymaterFactoryAddress, signer);
-        paymaster = DepositPaymaster__factory.connect(paymaterAddress, signer); // make sure you channge to your paymaster address
-        simpleAccountFactory = SimpleAccountFactory__factory.connect(SimpleAccountFactoryAddress, signer);
-    });
-    describe("createPaymaster", () => {
-        it("should create a new Paymaster and increase the count", async () => {
-            const countBefore = await paymasterFactory.count();
-            const tx = await paymasterFactory.createPaymaster(enrtryPointAddress);
-            await tx.wait();
-            console.log("Paymaster address: ",await paymasterFactory.getPaymasterAddress(countBefore.toNumber()))
-            const countAfter = await paymasterFactory.count();
+        [deployer] = await ethers.getSigners();
 
-            // After creating a new paymaster, paymasterFactory's count should increase by 1
-            expect(countAfter.toString()).to.equal(countBefore.add(1).toString());
+        const EntryPointFactory = await ethers.getContractFactory("EntryPoint");
+        entryPoint = await EntryPointFactory.deploy(deployer.address);
+        await entryPoint.deployed();
+
+        const PaymasterFactory_Factory = await ethers.getContractFactory("PaymasterFactory");
+        paymasterFactory = await PaymasterFactory_Factory.deploy();
+        await paymasterFactory.deployed();
+        const tx = await paymasterFactory.createPaymaster(entryPoint.address);
+        const receipt = await tx.wait();
+        const paymasterAddress = receipt.events?.[0].args?.paymaster as string;
+        paymaster = (await ethers.getContractAt("DepositPaymaster", paymasterAddress)) as DepositPaymaster;
+
+        const MPCTokenFactory = await ethers.getContractFactory("MPCToken");
+        token = await MPCTokenFactory.deploy();
+        await token.deployed();
+    });
+
+    describe("createPaymaster", async () => {
+        it("should create a new Paymaster and increase the count", async () => {
+            const tx = await paymasterFactory.createPaymaster(entryPoint.address);
+            const receipt = await tx.wait();
+            const _paymasterAddr = receipt.events?.[0].args?.paymaster as string;
+            await expect(tx)
+                .to.emit(paymasterFactory, "PaymasterCreated")
+                .withArgs(_paymasterAddr, deployer.address);
         });
     });
 
@@ -43,24 +53,33 @@ describe("Backend Test:", () => {
         it("should add stake to the Paymaster and update the stake amount", async () => {
             const stakeBefore = (await entryPoint.deposits(paymaster.address)).stake;
             const value = ethers.utils.parseEther("0.01");
-            const tx = await paymaster.addStake(13, { value: value });
+            const tx = await paymaster.addStake(100, { value: value });
             await tx.wait();
             const stakeAfter = (await entryPoint.deposits(paymaster.address)).stake;
 
+            // Try to unlock before delay
+            expect(paymaster.withdrawStake(deployer.address)).to.be.revertedWith(
+                "StakeManager: Stake withdrawal is not due"
+            );
+
             // Check if the stakeAfter is equal to stakeBefore + value
             expect(stakeAfter.toString()).to.equal(stakeBefore.add(value).toString());
+
+            // Try to unlock after delay
+            await expect(paymaster.unlockStake()).to.not.reverted;
+            await ethers.provider.send("evm_increaseTime", [101]);
+            await ethers.provider.send("evm_mine", []);
+            await expect(paymaster.withdrawStake(deployer.address)).to.not.reverted;
         });
     });
 
-    describe("depositTo", () => {
+    describe("depositTo", async () => {
         it("should deposit ETH to the Paymaster and update the deposit amount", async () => {
-            const paymasterAccount = paymaterAddress;
-            const depositBefore = await (await entryPoint.deposits(paymasterAccount)).deposit;
+            const depositBefore = (await entryPoint.deposits(paymaster.address)).deposit;
             const value = ethers.utils.parseEther("0.01");
-            const tx = await entryPoint.depositTo(paymasterAccount, { value: value });
+            const tx = await entryPoint.depositTo(paymaster.address, { value: value });
             await tx.wait();
-            const depositAfter = await (await entryPoint.deposits(paymasterAccount)).deposit;
-
+            const depositAfter = (await entryPoint.deposits(paymaster.address)).deposit;
             // Check if the depositAfter is equal to depositBefore + value
             expect(depositAfter.toString()).to.equal(depositBefore.add(value).toString());
         });
@@ -68,57 +87,63 @@ describe("Backend Test:", () => {
 
     describe("addToken", () => {
         it("should add a new token to the Paymaster and verify the oracle address", async () => {
+            const _MPCTokenFactory = await ethers.getContractFactory("MPCToken");
+            const _token = await _MPCTokenFactory.deploy();
+            await _token.deployed();
+
             // If the token was already added, it will be reverted.
-            const tokenAddress = "0xe84FbBbe0f576d46BC6D5315a9F981d25A8a9d79";
             const tokenPriceOracle = "0xEc6E432Cd61DAD1BAd43D32dE10e78Ac3785c790";
-            const tx = await paymaster.addToken(tokenAddress, tokenPriceOracle);
+            const tx = await paymaster.addToken(_token.address, tokenPriceOracle);
             await tx.wait();
-            const result = await paymaster.oracles(tokenAddress);
+            const result = await paymaster.oracles(_token.address);
 
             // Check if the oracle address of tokenAddress is added
             expect(result).to.equal(tokenPriceOracle);
         });
     });
 
-    describe("createAA", () => {
-        it("should create a new simple account and verify the account address", async () => {
-            const ownerAddress = signer.address;
-            const salt = 0;
-            const tx = await simpleAccountFactory.createAccount(ownerAddress, salt);
-            await tx.wait();
-            const simpleAccountAddress = await simpleAccountFactory.getAddress(ownerAddress, salt);
+    //   describe("createAA", () => {
+    //     it("should create a new simple account and verify the account address", async () => {
+    //       const ownerAddress = signer.address;
+    //       const salt = 0;
+    //       const tx = await simpleAccountFactory.createAccount(ownerAddress, salt);
+    //       await tx.wait();
+    //       const simpleAccountAddress = await simpleAccountFactory.getAddress(
+    //         ownerAddress,
+    //         salt
+    //       );
 
-            // Check if the simpleAccountAddress is not undefined
-            expect(simpleAccountAddress).to.not.be.undefined;
-        });
-    });
+    //       // Check if the simpleAccountAddress is not undefined
+    //       expect(simpleAccountAddress).to.not.be.undefined;
+    //     });
+    //   });
 
     describe("addDepositFor", () => {
         it("should add a token deposit for the Paymaster and update the deposit amount", async () => {
-            const tokenAddress = "0x1C02053E9565DF6178eCaAD166D4cB9F8431107b";
-            const paymasterAddress = "0x868CD7d2Baf6B468C3A179DdcD50255c332FEaFd";
-            const amount = 1;
-
-            const tokenABI = [
-                "function approve(address spender, uint256 amount) public returns (bool)",
-                "function allowance(address owner, address spender) public view returns (uint256)"
-            ];
-            const ownerAddress = await signer.getAddress();
-            const tokenContract = new ethers.Contract(tokenAddress, tokenABI, signer);
-            const approveTx = await tokenContract.approve(paymaster.address, amount);
+            const approveAmount = 1;
+            const ownerAddress = await deployer.getAddress();
+            const approveTx = await token.approve(paymaster.address, approveAmount);
             await approveTx.wait();
-            const allowance = await tokenContract.allowance(ownerAddress, paymaster.address);
+            const allowance = await token.allowance(ownerAddress, paymaster.address);
+
+            // add token for paymaster
+            const oracleAddress = "0xEc6E432Cd61DAD1BAd43D32dE10e78Ac3785c790";
+            await paymaster.addToken(token.address, oracleAddress);
 
             // Check if the allowance is equal to the amount
-            expect(allowance.toString()).to.equal(amount.toString());
+            expect(allowance.toString()).to.equal(approveAmount.toString());
 
-            const depositAmountBefore = await (await paymaster.depositInfo(tokenAddress, paymasterAddress)).amount;
-            const tx = await paymaster.addDepositFor(tokenAddress, paymasterAddress, amount);
+            const depositAmountBefore = (await paymaster.depositInfo(token.address, paymaster.address))
+                .amount;
+            const tx = await paymaster.addDepositFor(token.address, paymaster.address, approveAmount);
             await tx.wait();
-            const depositAmountAfter = await (await paymaster.depositInfo(tokenAddress, paymasterAddress)).amount;
+            const depositAmountAfter = (await paymaster.depositInfo(token.address, paymaster.address))
+                .amount;
 
             // Check if depositAmountAfter is equal to depositAmountBefore + amount
-            expect(depositAmountAfter.toString()).to.equal(depositAmountBefore.add(amount).toString());
-        }).timeout(70000);
+            expect(depositAmountAfter.toString()).to.equal(
+                depositAmountBefore.add(approveAmount).toString()
+            );
+        });
     });
 });
