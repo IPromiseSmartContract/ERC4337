@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-//import "@openzeppelin/contracts/access/Ownable.sol";
-
 import { IPaymaster } from "../interfaces/IPaymaster.sol";
 import { IEntryPoint } from "../interfaces/IEntryPoint.sol";
 
@@ -16,8 +14,9 @@ import { UserOperation } from "../libraries/UserOperation.sol";
 abstract contract Paymaster is IPaymaster {
     IEntryPoint public immutable entryPoint;
     address paymasterOwner;
-    modifier ownerOrNot() {
-        require(msg.sender == paymasterOwner, "Only owner can do this !");
+
+    modifier onlyOwner() {
+        require(msg.sender == paymasterOwner, "[Paymaster] Only owner can do this !");
         _;
     }
 
@@ -86,7 +85,7 @@ abstract contract Paymaster is IPaymaster {
      * @param withdrawAddress target to send to
      * @param amount to withdraw
      */
-    function withdrawTo(address payable withdrawAddress, uint256 amount) public ownerOrNot {
+    function withdrawTo(address payable withdrawAddress, uint256 amount) public onlyOwner {
         entryPoint.withdrawTo(withdrawAddress, amount);
     }
 
@@ -95,7 +94,7 @@ abstract contract Paymaster is IPaymaster {
      * This method can also carry eth value to add to the current stake.
      * @param unstakeDelaySec - the unstake delay for this paymaster. Can only be increased.
      */
-    function addStake(uint32 unstakeDelaySec) external payable ownerOrNot {
+    function addStake(uint32 unstakeDelaySec) external payable onlyOwner {
         entryPoint.addStake{ value: msg.value }(unstakeDelaySec);
     }
 
@@ -110,7 +109,7 @@ abstract contract Paymaster is IPaymaster {
      * unlock the stake, in order to withdraw it.
      * The paymaster can't serve requests once unlocked, until it calls addStake again
      */
-    function unlockStake() external ownerOrNot {
+    function unlockStake() external onlyOwner {
         entryPoint.unlockStake();
     }
 
@@ -119,7 +118,7 @@ abstract contract Paymaster is IPaymaster {
      * stake must be unlocked first (and then wait for the unstakeDelay to be over)
      * @param withdrawAddress the address to send withdrawn value.
      */
-    function withdrawStake(address payable withdrawAddress) external ownerOrNot {
+    function withdrawStake(address payable withdrawAddress) external onlyOwner {
         entryPoint.withdrawStake(withdrawAddress);
     }
 

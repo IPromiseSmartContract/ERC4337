@@ -46,8 +46,8 @@ contract DepositPaymaster is Paymaster {
     /**
      * owner of the paymaster should add supported tokens
      */
-    function addToken(IERC20 token, IOracle tokenPriceOracle) external ownerOrNot {
-        require(oracles[token] == NULL_ORACLE, "Token already set");
+    function addToken(IERC20 token, IOracle tokenPriceOracle) external onlyOwner {
+        require(oracles[token] == NULL_ORACLE, "DepositPaymaster: Token already set");
         oracles[token] = tokenPriceOracle;
     }
 
@@ -64,7 +64,7 @@ contract DepositPaymaster is Paymaster {
     function addDepositFor(IERC20 token, address account, uint256 amount) external {
         //(sender must have approval for the paymaster)
         token.safeTransferFrom(msg.sender, address(this), amount);
-        require(oracles[token] != NULL_ORACLE, "unsupported token");
+        require(oracles[token] != NULL_ORACLE, "DepositPaymaster: unsupported token");
         balances[token][account] += amount;
         if (msg.sender == account) {
             lockTokenDeposit();
