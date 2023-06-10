@@ -11,13 +11,14 @@
 2. Execute the following commands:
 
    ```shell
-   yarn && npx hardhat compile
+   yarn 
+   yarn compile
    ```
 
 3. Copy `.env.example` to `.env` and **fill in the values**
 
    ```shell
-    cp .env.example .env
+   cp .env.example .env
    ```
 
 ## Deploy to localhost

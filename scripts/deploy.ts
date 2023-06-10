@@ -55,6 +55,7 @@ async function main() {
     console.log("=====================================");
 
     const deployments: Deployment = {
+        network: ethers.provider.network.name,
         deployer: signer.address,
         senderFactory: {
             address: senderFactory.address,
