@@ -12,9 +12,8 @@ import {
     PermitPaymaster__factory,
     PermitPaymaster,
 } from "../typechain-types";
-import { config as envConfig } from "dotenv";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-envConfig();
+// Get v, r ,s to call permit()
 async function getPermitSignature(signer: SignerWithAddress, token: Contract, spender: string, value: number, deadline: number) {
     const [nonce, name, version, chainId] = await Promise.all([
         token.nonces(signer.address),
@@ -102,21 +101,27 @@ describe("Permit Paymaster Test:", async () => {
             // add token for paymaster
             const oracleAddress = "0xEc6E432Cd61DAD1BAd43D32dE10e78Ac3785c790";
             await permitPaymaster.addToken(token.address, oracleAddress);
-            const transferAmount = 1
+            const approveAmount = 1
             const deadline = Math.floor(Date.now() / 1000) + 3600;
 
             const { v, r, s } = await getPermitSignature(
                 deployer,
                 token,
                 permitPaymaster.address,
-                transferAmount,
+                approveAmount,
                 deadline
             )
-
+            const permitData = {
+                approveAmount: approveAmount,
+                deadline: deadline,
+                v: v,
+                r: r,
+                s: s
+            };
             const depositAmountBefore = (await permitPaymaster.depositInfo(token.address, permitPaymaster.address))
                 .amount;
             // console.log(depositAmountBefore)
-            const tx = await permitPaymaster.permitAddDepositFor(token.address, permitPaymaster.address, transferAmount, deadline, v, r, s)
+            const tx = await permitPaymaster.permitAddDepositFor(token.address, permitPaymaster.address, permitData);
             // const tx = await paymaster.addDepositFor(token.address, paymaster.address, approveAmount);
             // await tx.wait();
             const depositAmountAfter = (await permitPaymaster.depositInfo(token.address, permitPaymaster.address))
@@ -124,7 +129,7 @@ describe("Permit Paymaster Test:", async () => {
             // console.log(depositAmountAfter)
             // Check if depositAmountAfter is equal to depositAmountBefore + amount
             expect(depositAmountAfter.toString()).to.equal(
-                depositAmountBefore.add(transferAmount).toString()
+                depositAmountBefore.add(approveAmount).toString()
             );
         });
     });
