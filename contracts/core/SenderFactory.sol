@@ -13,9 +13,11 @@ contract SenderFactory {
 
         (bool success, bytes memory data) = factory.call(initCallData);
 
-        require(success, "SenderFactory: failed to create sender");
-
-        sender = abi.decode(data, (address));
+        if (success) {
+            sender = abi.decode(data, (address));
+        } else {
+            sender = address(0);
+        }
 
         /* solhint-disable no-inline-assembly */
         // assembly {
