@@ -10,4 +10,5 @@ export interface Deployment {
     entryPoint: Contract;
     simpleAccountFactory: Contract;
     paymasterFactory: Contract;
+    paymaster: Contract;
 }

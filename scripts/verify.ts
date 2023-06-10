@@ -38,12 +38,14 @@ async function verifyContract(deployment: Deployment, network: Network) {
     const entryPointCmd = `${prefix} ${deployment.entryPoint.address} ${deployment.senderFactory.address}`;
     const simpleAccountFactoryCmd = `${prefix} ${deployment.simpleAccountFactory.address} ${deployment.entryPoint.address}`;
     const paymasterFactoryCmd = `${prefix} ${deployment.paymasterFactory.address}`;
+    const paymasterCmd = `${prefix} ${deployment.paymaster.address} ${deployment.entryPoint.address} ${deployment.deployer}`;
 
     await Promise.all([
         executeCommand(senderFactoryCmd),
         executeCommand(entryPointCmd),
         executeCommand(simpleAccountFactoryCmd),
         executeCommand(paymasterFactoryCmd),
+        executeCommand(paymasterCmd),
     ]);
 }
 

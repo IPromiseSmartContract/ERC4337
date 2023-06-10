@@ -46,12 +46,17 @@ async function main() {
     const paymasterFactory = await PaymasterFactory_Factory.deploy();
     await paymasterFactory.deployed();
 
+    const tx = await paymasterFactory.createPaymaster(entryPoint.address);
+    const receipt = await tx.wait();
+    const paymasterAddress = receipt.events?.[0].args?.[0];
+
     console.log("=====================================");
     console.log("Deployer address:", signer.address);
     console.log("SenderFactory deployed to:", senderFactory.address);
     console.log("EntryPoint deployed to:", entryPoint.address);
     console.log("SimpleAccountFactory deployed to:", simpleAccountFactory.address);
     console.log("PaymasterFactory deployed to:", paymasterFactory.address);
+    console.log("Paymaster deployed to:", paymasterAddress);
     console.log("=====================================");
 
     const deployments: Deployment = {
@@ -72,6 +77,10 @@ async function main() {
         paymasterFactory: {
             address: paymasterFactory.address,
             constructor: [],
+        },
+        paymaster: {
+            address: paymasterAddress,
+            constructor: [entryPoint.address, signer.address],
         },
     };
 
