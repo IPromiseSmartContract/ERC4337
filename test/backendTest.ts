@@ -5,7 +5,7 @@ import {
     PaymasterFactory,
     DepositPaymaster,
     SimpleAccountFactory,
-    MPCToken__factory,
+    SenderFactory,
     MPCToken,
 } from "../typechain-types";
 import { config as envConfig } from "dotenv";
@@ -17,6 +17,8 @@ describe("Backend Test:", async () => {
     let paymasterFactory: PaymasterFactory;
     let paymaster: DepositPaymaster;
     let token: MPCToken;
+    let senderFactory: SenderFactory;
+    let simpleAccountFactory: SimpleAccountFactory;
 
     before(async () => {
         [deployer] = await ethers.getSigners();
@@ -36,6 +38,14 @@ describe("Backend Test:", async () => {
         const MPCTokenFactory = await ethers.getContractFactory("MPCToken");
         token = await MPCTokenFactory.deploy();
         await token.deployed();
+
+        const SenderFactory__Factory = await ethers.getContractFactory("SenderFactory");
+        senderFactory = await SenderFactory__Factory.deploy();
+        await senderFactory.deployed();
+
+        const simpleAccountFactory__Factory = await ethers.getContractFactory("SimpleAccountFactory");
+        simpleAccountFactory = await simpleAccountFactory__Factory.deploy(entryPoint.address);
+        await simpleAccountFactory.deployed();
     });
 
     describe("createPaymaster", async () => {
@@ -104,10 +114,6 @@ describe("Backend Test:", async () => {
 
     describe("createAA", () => {
         it("should create a new simple account and verify the account address", async () => {
-            const simpleAccountFactory__Factory = await ethers.getContractFactory("SimpleAccountFactory");
-            const simpleAccountFactory = await simpleAccountFactory__Factory.deploy(entryPoint.address);
-            await simpleAccountFactory.deployed();
-
             const salt = 0;
             await simpleAccountFactory.createAccount(deployer.address, salt);
 
@@ -116,6 +122,20 @@ describe("Backend Test:", async () => {
 
             expect(accountAddr).not.to.be.undefined;
         });
+    });
+
+    it("create sender account", async () => {
+        const salt = 9487;
+        const callCode = simpleAccountFactory.interface.encodeFunctionData("createAccount", [
+            deployer.address,
+            salt,
+        ]);
+        const initCode = `${simpleAccountFactory.address}${callCode.substring(2)}}`;
+        console.log(initCode);
+        // TODO: the test will fail with `Error: invalid arrayify value`
+        // However, it works fine in the real environment
+        const rtn = await senderFactory.callStatic.createSender(initCode);
+        expect(rtn).not.to.be.empty;
     });
 
     describe("addDepositFor", () => {

@@ -25,6 +25,7 @@
     "compile": "npx hardhat compile",
     "test": "npx hardhat test",
     "deploy": "yarn compile && npx hardhat run --network sepolia scripts/deploy.ts",
+    "deploy-token": "yarn compile && npx hardhat run --network sepolia scripts/deploy-token.ts",
     "verify": "npx hardhat run --network sepolia scripts/verify.ts"
   },
   "version": "0.0.1",
