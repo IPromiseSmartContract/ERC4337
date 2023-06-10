@@ -27,7 +27,13 @@ import "./IOracle.sol";
 contract PermitPaymaster is Paymaster {
     using UserOperationLib for UserOperation;
     using SafeERC20 for ERC20Permit;
-
+    struct PermitData {
+        uint256 approveAmount;
+        uint256 deadline;
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
+    }
     //calculated cost of the postOp
     uint256 public constant COST_OF_POST = 35000;
     IOracle private constant NULL_ORACLE = IOracle(address(0));
@@ -60,25 +66,25 @@ contract PermitPaymaster is Paymaster {
      *
      * @param token the token to deposit.
      * @param account the account to deposit for.
-     * @param amount the amount of token to deposit.
-     * @param deadline :...
-     * @param v :...
-     * @param r :...
-     * @param s :...
+     * @param permitData PermitData struct( needed data to call permit() )
      */
     function permitAddDepositFor(
         ERC20Permit token,
         address account,
-        uint256 amount,
-        uint deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
+        PermitData memory permitData
     ) external {
-        token.permit(msg.sender, address(this), amount, deadline, v, r, s);
-        token.safeTransferFrom(msg.sender, address(this), amount);
+        token.permit(
+            msg.sender,
+            address(this),
+            permitData.approveAmount,
+            permitData.deadline,
+            permitData.v,
+            permitData.r,
+            permitData.s
+        );
+        token.safeTransferFrom(msg.sender, address(this), permitData.approveAmount);
         require(oracles[token] != NULL_ORACLE, "DepositPaymaster: unsupported token");
-        balances[token][account] += amount;
+        balances[token][account] += permitData.approveAmount;
         if (msg.sender == account) {
             lockTokenDeposit();
         }
@@ -192,18 +198,31 @@ contract PermitPaymaster is Paymaster {
             ERC20Permit token,
             uint256 gasPricePostOp,
             uint256 maxTokenCost,
-            uint256 maxCost
-        ) = abi.decode(context, (address, ERC20Permit, uint256, uint256, uint256));
-        //use same conversion rate as used for validation.
+            uint256 maxCost,
+            PermitData memory permitData
+        ) = abi.decode(context, (address, ERC20Permit, uint256, uint256, uint256, PermitData));
+
+        // use same conversion rate as used for validation.
         uint256 actualTokenCost = ((actualGasCost + COST_OF_POST * gasPricePostOp) *
             maxTokenCost) / maxCost;
+
         if (mode != PostOpMode.postOpReverted) {
+            token.permit(
+                msg.sender,
+                address(this),
+                permitData.approveAmount,
+                permitData.deadline,
+                permitData.v,
+                permitData.r,
+                permitData.s
+            );
             // attempt to pay with tokens:
             token.safeTransferFrom(account, address(this), actualTokenCost);
         } else {
-            //in case above transferFrom failed, pay with deposit:
+            // in case above transferFrom failed, pay with deposit:
             balances[token][account] -= actualTokenCost;
         }
+
         balances[token][paymasterOwner] += actualTokenCost;
     }
 }
