@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import type { Deployment } from "./types";
 import { exec } from "child_process";
-import { ethers, network } from "hardhat";
+import { ethers } from "hardhat";
 import type { Network } from "@ethersproject/networks";
 
 function validateJsonFilePath(path: string): boolean {
